@@ -39,13 +39,14 @@ fs.copyFileSync(path.join(brand, "favicon.ico"), path.join(admin, "static/favico
 
 // 2. Theme CSS appended to the admin stylesheet
 fs.appendFileSync(path.join(admin, "static/css/admin.css"), rd(path.join(brand, "brand.css")))
+fs.writeFileSync(path.join(admin, "static/css/anands.css"), rd(path.join(brand, "brand.css")))
 
 // 3. Layout (navbar, title, footer, login page) in both .templ and generated _templ.go
 const NAV_ICON = '<i class="fas fa-server me-2"></i>'
 const NAV_IMG = '<img src="/static/img/logo-orange.png" alt="Anands" />'
 const ALPHA = '<span class="badge bg-warning text-dark ms-2">ALPHA</span>'
 const LOGIN_ICON = '<i class="fas fa-server fa-3x text-primary mb-3"></i>'
-const LOGIN_IMG = '<img src="/static/img/logo-orange.png" alt="Anands Storage" class="login-logo mb-3" />'
+const LOGIN_IMG = '<img src="/static/img/logo-orange.png" alt="Anands Storage" class="login-logo mb-3" style="height:72px;width:auto;max-width:100%" />'
 const ICON_LINK = '<link rel="icon" href="/static/favicon.ico" type="image/x-icon">'
 const ICON_LINKS = ICON_LINK + '<link rel="apple-touch-icon" href="/static/img/icon-192.png"><meta name="theme-color" content="#111111">'
 
@@ -60,6 +61,10 @@ for (const [file, goEscaped] of [
 		s = s.replaceAll(ICON_LINK.replaceAll('"', goEscaped ? '\\"' : '"'), ICON_LINKS.replaceAll('"', goEscaped ? '\\"' : '"'))
 		if (!s.includes("apple-touch-icon")) throw new Error("favicon link patch failed in " + file)
 		if (!s.includes("SeaweedFS Admin")) throw new Error("title not found in " + file)
+		const re = goEscaped ? /<\/head>\s*<body class=\\"bg-light/ : /<\/head>\s*<body class="bg-light/
+		if (!re.test(s)) throw new Error("login head not found in " + file)
+		const link = goEscaped ? '<link href=\\"/static/css/anands.css\\" rel=\\"stylesheet\\">' : '<link href="/static/css/anands.css" rel="stylesheet">'
+		s = s.replace(re, (m) => link + m)
 		s = s.replaceAll("SeaweedFS Admin", "Anands Storage")
 		return s
 	})
