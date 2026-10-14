@@ -32,7 +32,7 @@ const both = (s, from, to, label, goEscaped) => {
 // 1. Static assets
 const img = path.join(admin, "static/img")
 fs.mkdirSync(img, { recursive: true })
-for (const f of ["logo-orange.png", "logo-white.png", "logo-mark.png", "icon-192.png", "icon-512.png"]) {
+for (const f of ["logo-orange.png", "logo-white.png", "logo-mark.png", "icon-192.png", "icon-512.png", "icon.svg", "favicon-16.png", "favicon-32.png", "apple-touch-icon.png", "site.webmanifest"]) {
 	fs.copyFileSync(path.join(brand, f), path.join(img, f))
 }
 fs.copyFileSync(path.join(brand, "favicon.ico"), path.join(admin, "static/favicon.ico"))
@@ -48,7 +48,12 @@ const ALPHA = '<span class="badge bg-warning text-dark ms-2">ALPHA</span>'
 const LOGIN_ICON = '<i class="fas fa-server fa-3x text-primary mb-3"></i>'
 const LOGIN_IMG = '<img src="/static/img/logo-orange.png" alt="Anands Storage" class="login-logo mb-3" style="height:72px;width:auto;max-width:100%" />'
 const ICON_LINK = '<link rel="icon" href="/static/favicon.ico" type="image/x-icon">'
-const ICON_LINKS = ICON_LINK + '<link rel="apple-touch-icon" href="/static/img/icon-192.png"><meta name="theme-color" content="#111111">'
+const ICON_LINKS =
+	'<link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">' +
+	'<link rel="icon" href="/static/img/favicon-32.png" type="image/png" sizes="32x32">' +
+	'<link rel="icon" href="/static/img/favicon-16.png" type="image/png" sizes="16x16">' +
+	ICON_LINK +
+	'<link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png"><link rel="manifest" href="/static/img/site.webmanifest"><meta name="theme-color" content="#111111">'
 
 for (const [file, goEscaped] of [
 	["weed/admin/view/layout/layout.templ", false],
