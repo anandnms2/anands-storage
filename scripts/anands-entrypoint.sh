@@ -51,6 +51,17 @@ if [ "$1" = "admin" ] \
     ACCESS="--authenticated-emails-file=/tmp/sso-emails.txt"
   fi
 
+  # Logout: clear the proxy session, then end the Authentik session too (override with ANANDS_SSO_END_SESSION_URL;
+  # set it to "none" to only clear the local session).
+  ISSUER_HOST=$(echo "$ANANDS_SSO_ISSUER_URL" | sed -E 's#^https?://([^/]+).*#\1#')
+  END_SESSION="${ANANDS_SSO_END_SESSION_URL:-${ANANDS_SSO_ISSUER_URL%/}/end-session/}"
+  if [ "$END_SESSION" = "none" ]; then
+    export ANANDS_SSO_LOGOUT_URL="/oauth2/sign_out?rd=%2Foauth2%2Fstart"
+  else
+    ENC=$(echo "$END_SESSION" | sed 's#%#%25#g; s#:#%3A#g; s#/#%2F#g; s#?#%3F#g; s#=#%3D#g; s#&#%26#g')
+    export ANANDS_SSO_LOGOUT_URL="/oauth2/sign_out?rd=$ENC"
+  fi
+
   echo "[anands] SSO enabled: gate on :$PORT -> admin on 127.0.0.1:$INTERNAL"
   (
     while true; do
@@ -64,6 +75,7 @@ if [ "$1" = "admin" ] \
         --code-challenge-method=S256 \
         --skip-provider-button=true \
         --reverse-proxy=true \
+        --whitelist-domain="$ISSUER_HOST" \
         --cookie-secure=true \
         --cookie-name=_anands_storage \
         --insecure-oidc-allow-unverified-email=true \

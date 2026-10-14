@@ -84,4 +84,19 @@ edit("weed/command/admin.go", (s) =>
 	),
 )
 
+// 6. SSO mode: /logout ends the session (oauth2-proxy + Authentik), /login jumps straight to the IdP.
+//    These routes only exist upstream when the built-in login is on, so no duplicate-route clash.
+edit("weed/command/admin.go", (s) =>
+	once(
+		s,
+		"adminHandlers.SetupRoutes(r, authRequired, *options.adminUser, *options.adminPassword, *options.readOnlyUser, *options.readOnlyPassword, enableUI)",
+		`adminHandlers.SetupRoutes(r, authRequired, *options.adminUser, *options.adminPassword, *options.readOnlyUser, *options.readOnlyPassword, enableUI)
+	if logoutURL := os.Getenv("ANANDS_SSO_LOGOUT_URL"); logoutURL != "" && !authRequired {
+		r.GET("/logout", func(c *gin.Context) { c.Redirect(http.StatusFound, logoutURL) })
+		r.GET("/login", func(c *gin.Context) { c.Redirect(http.StatusFound, "/oauth2/start?rd=%2F") })
+	}`,
+		"sso routes",
+	),
+)
+
 console.log("Anands Storage branding applied")

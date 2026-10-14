@@ -38,7 +38,18 @@ In Authentik: create an OAuth2/OpenID provider (confidential, redirect URI above
 an Application using it, and bind only the users/groups who may administer storage.
 
 When on: oauth2-proxy listens on the admin's public port, the real admin moves to `127.0.0.1:<port+20000>`,
-and the admin's own login is disabled (SSO replaces it). Sign out: `/oauth2/sign_out`.
+and the admin's own login is disabled (SSO replaces it). 
+### Login / logout links (SSO on)
+| Link | Does |
+|---|---|
+| `https://s3-admin.anands.xyz/oauth2/start?rd=/` | **Direct login hotlink**: goes straight to Authentik (no button). Change `rd` to deep-link, e.g. `rd=/cluster/volumes`. |
+| `https://s3-admin.anands.xyz/login` | Same, redirects to the hotlink above |
+| `https://s3-admin.anands.xyz/logout` | **Logout**: clears the admin session and ends the Authentik session (navbar "Logout" uses this) |
+| `https://s3-admin.anands.xyz/oauth2/sign_out` | Raw proxy sign-out (admin session only) |
+
+Any protected page also bounces unauthenticated visitors straight to Authentik, so plain deep links work as hotlinks.
+Optional: `ANANDS_SSO_END_SESSION_URL` overrides the Authentik end-session URL (default: issuer URL + `end-session/`);
+set it to `none` to sign out of the admin only and keep the Authentik session.
 The S3 API (port 8333) and master are not affected.
 
 ## Upgrading SeaweedFS
