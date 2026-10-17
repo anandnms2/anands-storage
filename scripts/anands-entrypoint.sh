@@ -62,6 +62,9 @@ if [ "$1" = "admin" ] \
     export ANANDS_SSO_LOGOUT_URL="/oauth2/sign_out?rd=$ENC"
   fi
 
+  # Coolify's container healthcheck is `wget http://127.0.0.1:<port>/` (User-Agent "Wget"). Without this, the proxy
+  # answers it with a 302 to Authentik and the container is marked unhealthy. Requests with that UA get a bare
+  # "OK" from the proxy itself; they are never forwarded to the admin.
   echo "[anands] SSO enabled: gate on :$PORT -> admin on 127.0.0.1:$INTERNAL"
   (
     while true; do
@@ -75,6 +78,7 @@ if [ "$1" = "admin" ] \
         --code-challenge-method=S256 \
         --skip-provider-button=true \
         --reverse-proxy=true \
+        --ping-user-agent=Wget \
         --whitelist-domain="$ISSUER_HOST" \
         --cookie-secure=true \
         --cookie-name=_anands_storage \
