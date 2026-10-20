@@ -1,0 +1,71 @@
+name: upgrade
+# Weekly: if upstream SeaweedFS has a newer STABLE release (GitHub "latest", never pre-releases),
+# build the branded image from it. The branding patches assert they matched, so if upstream changed shape the
+# build FAILS and nothing is published or committed: :latest keeps pointing at the last good image.
+# On success: push :latest and :<version>, then commit the new pin to main. Redeploy is done separately (Coolify).
+on:
+  schedule:
+    - cron: "30 5 * * 0"   # Sunday 05:30 UTC = 08:30 EAT, ahead of the 09:00 EAT redeploy + health check
+  workflow_dispatch:
+    inputs:
+      seaweed_ref:
+        description: "Force this upstream tag instead of the latest stable release (e.g. 4.14)"
+        required: false
+concurrency:
+  group: upgrade
+  cancel-in-progress: false
+permissions:
+  contents: write
+  packages: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCED: ${{ inputs.seaweed_ref }}
+        run: |
+          set -eu
+          cur=$(grep -m1 '^ARG SEAWEED_REF=' Dockerfile | cut -d= -f2)
+          new="$FORCED"
+          [ -n "$new" ] || new=$(gh api repos/seaweedfs/seaweedfs/releases/latest --jq .tag_name)
+          echo "current=$cur latest=$new"
+          echo "$new" | grep -Eq '^[0-9]+(\.[0-9]+)+$' || { echo "unexpected tag format: $new"; exit 1; }
+          changed=false
+          if [ "$new" != "$cur" ]; then
+            if [ -n "$FORCED" ] || [ "$(printf '%s\n%s\n' "$cur" "$new" | sort -V | tail -1)" = "$new" ]; then changed=true; fi
+          fi
+          echo "cur=$cur" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "### SeaweedFS: current $cur, upstream stable $new, upgrade: $changed" >> "$GITHUB_STEP_SUMMARY"
+      - if: steps.ver.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v3
+      - if: steps.ver.outputs.changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.ver.outputs.changed == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            SEAWEED_REF=${{ steps.ver.outputs.new }}
+          tags: |
+            ghcr.io/anandnms2/anands-storage:latest
+            ghcr.io/anandnms2/anands-storage:${{ steps.ver.outputs.new }}
+      - if: steps.ver.outputs.changed == 'true'
+        run: |
+          set -eu
+          sed -i "s/^ARG SEAWEED_REF=.*/ARG SEAWEED_REF=${{ steps.ver.outputs.new }}/" Dockerfile
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Dockerfile
+          git commit -m "Upgrade SeaweedFS ${{ steps.ver.outputs.cur }} -> ${{ steps.ver.outputs.new }}"
+          git push origin HEAD:main

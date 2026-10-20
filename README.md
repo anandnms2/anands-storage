@@ -55,3 +55,12 @@ The S3 API (port 8333) and master are not affected.
 ## Upgrading SeaweedFS
 Run the workflow manually with `seaweed_ref` set to the new tag (or change the default in `Dockerfile`
 and `build.yml`), then redeploy.
+
+## Automatic weekly upgrade
+`.github/workflows/upgrade.yml` runs every Sunday 08:30 EAT. It reads the latest STABLE upstream release
+(`seaweedfs/seaweedfs` GitHub "latest", never pre-releases). If it is newer than `ARG SEAWEED_REF` in the Dockerfile it
+builds the branded image from it. The branding patches assert they matched, so if upstream changed shape the build fails
+and nothing is published or committed: `:latest` keeps pointing at the last good image. On success it pushes
+`ghcr.io/anandnms2/anands-storage:latest` plus a `:<version>` tag, then commits the new pin to `main`.
+Roll back by setting the Coolify image to `ghcr.io/anandnms2/anands-storage:<previous version>`.
+Manual run: Actions > upgrade > Run workflow (optionally force a tag).
